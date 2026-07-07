@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>家計管理・ライフプランシート</title>
+<style>
+  :root {
+    --blue: #2563eb; --green: #16a34a; --red: #dc2626; --orange: #ea580c; --purple: #9333ea;
+    --bg: #f5f7fa; --card: #ffffff; --border: #e2e8f0; --text: #1e293b; --sub: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Hiragino Sans", "Yu Gothic", sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; }
+  .wrap { max-width: 1000px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .lead { color: var(--sub); font-size: 13px; margin-bottom: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 2px solid var(--bg); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+  label.field { display: block; font-size: 12px; color: var(--sub); }
+  label.field b { display: block; margin-bottom: 4px; color: var(--text); font-size: 12.5px; }
+  input[type=number], input[type=text], select { width: 100%; padding: 7px 9px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff; }
+  .unit { font-size: 11px; color: var(--sub); }
+  button { cursor: pointer; border: none; border-radius: 8px; font-size: 14px; }
+  .btn-add { background: #e0e7ff; color: #3730a3; padding: 8px 14px; }
+  .btn-del { background: #fee2e2; color: #991b1b; padding: 7px 10px; font-size: 12px; flex-shrink: 0; }
+  .btn-reset { background: #fee2e2; color: #991b1b; padding: 8px 14px; font-size: 12px; }
+
+  /* メインタブ */
+  .main-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .main-tabs button { flex: 1; padding: 12px 0; border-radius: 10px; font-size: 15px; font-weight: bold; background: #fff; color: var(--sub); border: 1px solid var(--border); }
+  .main-tabs button.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  /* 支出の行 */
+  .exp-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .exp-row input.e-name { flex: 1.4; min-width: 90px; }
+  .exp-row input.e-amount { flex: 1; min-width: 80px; text-align: right; }
+  .exp-row select.e-cls { flex: 0.9; min-width: 72px; }
+  .exp-head { display: flex; gap: 8px; font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+  .exp-head span:nth-child(1) { flex: 1.4; min-width: 90px; }
+  .exp-head span:nth-child(2) { flex: 1; min-width: 80px; text-align: right; }
+  .exp-head span:nth-child(3) { flex: 0.9; min-width: 72px; }
+  .exp-head span:nth-child(4) { width: 48px; }
+  .sec-total { text-align: right; font-size: 13px; margin-top: 8px; }
+  .sec-total b { font-size: 16px; }
+
+  /* 診断 */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .kpi { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .kpi .k-label { font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+  .kpi .k-value { font-size: 22px; font-weight: bold; }
+  .kpi .k-note { font-size: 11.5px; margin-top: 4px; line-height: 1.5; }
+  .good { color: var(--green); } .warn { color: var(--orange); } .bad { color: var(--red); }
+  .bar-wrap { background: var(--bg); border-radius: 99px; height: 22px; overflow: hidden; display: flex; margin: 8px 0 4px; }
+  .bar-seg { height: 100%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: bold; white-space: nowrap; overflow: hidden; }
+  .legend { font-size: 11.5px; color: var(--sub); display: flex; gap: 14px; flex-wrap: wrap; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .progress-wrap { background: var(--bg); border-radius: 99px; height: 22px; overflow: hidden; margin: 8px 0 4px; }
+  .progress-bar { height: 100%; background: var(--green); color: #fff; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; min-width: 36px; transition: width .3s; }
+
+  /* 宿題リスト */
+  .hw-list { list-style: none; padding: 0; margin: 0; }
+  .hw-item { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--border); align-items: flex-start; }
+  .hw-item:last-child { border-bottom: none; }
+  .hw-badge { flex-shrink: 0; font-size: 11px; font-weight: bold; padding: 3px 10px; border-radius: 99px; color: #fff; margin-top: 2px; white-space: nowrap; }
+  .hw-p1 { background: var(--red); } .hw-p2 { background: var(--orange); } .hw-p3 { background: var(--blue); } .hw-p0 { background: var(--green); }
+  .hw-item b { font-size: 13.5px; }
+  .hw-detail { font-size: 12px; color: var(--sub); line-height: 1.6; margin-top: 2px; }
+  .hw-save { color: var(--green); font-weight: bold; }
+
+  /* チェックリスト */
+  .check-list { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+  .check-list li { padding: 7px 0; border-bottom: 1px dashed var(--border); display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; }
+  .check-list input { width: 18px; height: 18px; margin-top: 2px; flex-shrink: 0; }
+  .check-list .tip { color: var(--sub); font-size: 12px; }
+
+  /* ライフイベント */
+  .ev-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .ev-row input.ev-age { width: 80px; text-align: right; }
+  .ev-row input.ev-name { flex: 1; min-width: 140px; }
+  .ev-row input.ev-cost { width: 110px; text-align: right; }
+
+  table.detail { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.detail th, table.detail td { padding: 5px 8px; text-align: right; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }
+  table.detail th { position: sticky; top: 0; background: var(--bg); }
+  table.detail td:first-child, table.detail th:first-child { text-align: center; }
+  .detail-scroll { max-height: 360px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
+  .retire-row { background: #e0f2fe; }
+  .fire-row { background: #dcfce7; }
+  .dead-row { background: #fee2e2; }
+  .ng { color: var(--red); font-weight: bold; }
+  canvas { width: 100%; height: auto; }
+  .notes { font-size: 12px; color: var(--sub); line-height: 1.8; }
+  .notes li { margin-bottom: 2px; }
+  .save-note { font-size: 11.5px; color: var(--sub); text-align: right; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📒 家計管理・ライフプランシート</h1>
+  <p class="lead">リベ大(両学長)の考え方をベースにした家計管理シートです。まず「家計管理」タブで毎月の収支を入力すると、<b>貯蓄率・固定費の割合・消費/浪費/投資のバランス・生活防衛資金</b>を自動で診断します。次に「ライフプラン」タブで、その家計をもとに<b>生涯の資産推移</b>をシミュレーションできます。</p>
+  <p class="save-note">💾 入力内容はこのブラウザに自動保存されます(サーバーには送信されません)</p>
+
+  <div class="main-tabs">
+    <button id="tabBtnKakei" class="on" onclick="switchTab('kakei')">📒 家計管理</button>
+    <button id="tabBtnLife" onclick="switchTab('life')">📅 ライフプラン</button>
+  </div>
+
+  <!-- ============ 家計管理タブ ============ -->
+  <div id="tabKakei">
+
+    <div class="card">
+      <h2>💰 収入(手取り・月あたり)</h2>
+      <p class="lead" style="margin:0 0 12px">額面ではなく<b>手取り(実際に振り込まれる額)</b>を円単位で入力してください。ボーナスは12で割って月額に足すか、「その他」に月割りで入れてください。</p>
+      <div class="grid">
+        <label class="field"><b>給与(本人)</b><input type="number" id="incSelf" value="250000" step="1000"> <span class="unit">円/月</span></label>
+        <label class="field"><b>給与(配偶者)</b><input type="number" id="incSpouse" value="0" step="1000"> <span class="unit">円/月(いなければ0)</span></label>
+        <label class="field"><b>副業・事業</b><input type="number" id="incSide" value="0" step="1000"> <span class="unit">円/月(稼ぐ力!)</span></label>
+        <label class="field"><b>その他(ボーナス月割りなど)</b><input type="number" id="incOther" value="0" step="1000"> <span class="unit">円/月</span></label>
+      </div>
+      <p class="sec-total">収入合計: <b id="incTotal">0円</b>/月</p>
+    </div>
+
+    <div class="card">
+      <h2>🏠 固定費(毎月ほぼ同じ額が出ていくもの)</h2>
+      <p class="lead" style="margin:0 0 10px">リベ大では固定費の見直しが「貯める力」の最重要ポイントです。各項目を<b>消費・浪費・投資</b>に仕分けしましょう(消費=生活に必要、浪費=なくても困らない・見栄、投資=将来のリターンにつながる)。</p>
+      <div class="exp-head"><span>項目</span><span>金額(円/月)</span><span>仕分け</span><span></span></div>
+      <div id="fixedRows"></div>
+      <button class="btn-add" onclick="addExpRow('fixed')">+ 固定費を追加</button>
+      <p class="sec-total">固定費合計: <b id="fixedTotal">0円</b>/月</p>
+    </div>
+
+    <div class="card">
+      <h2>🛒 変動費(月によって変わるもの)</h2>
+      <p class="lead" style="margin:0 0 10px">直近1〜3ヶ月の平均を入れると実態に近くなります。年払いのもの(車検・保険・帰省など)は12で割って「特別費の積立」に入れるのがおすすめです。</p>
+      <div class="exp-head"><span>項目</span><span>金額(円/月)</span><span>仕分け</span><span></span></div>
+      <div id="varRows"></div>
+      <button class="btn-add" onclick="addExpRow('var')">+ 変動費を追加</button>
+      <p class="sec-total">変動費合計: <b id="varTotal">0円</b>/月</p>
+    </div>
+
+    <div class="card">
+      <h2>🛡️ 資産と生活防衛資金</h2>
+      <p class="lead" style="margin:0 0 12px">生活防衛資金は「何かあっても当面暮らせるお金」で、投資とは別に<b>現金</b>で持つのがリベ大の基本です。目安は会社員で生活費の6ヶ月分、フリーランス・自営業で1年分。</p>
+      <div class="grid">
+        <label class="field"><b>現金・預金</b><input type="number" id="cashNow" value="100" step="10"> <span class="unit">万円</span></label>
+        <label class="field"><b>投資額(株式・投信・NISAなど)</b><input type="number" id="investNow" value="0" step="10"> <span class="unit">万円</span></label>
+        <label class="field"><b>働き方</b>
+          <select id="jobType">
+            <option value="3">公務員(目安: 生活費3ヶ月分)</option>
+            <option value="6" selected>会社員(目安: 生活費6ヶ月分)</option>
+            <option value="12">フリーランス・自営業(目安: 1年分)</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 家計の診断結果(入力すると自動で更新)</h2>
+      <div class="kpi-grid" id="kpiGrid"></div>
+
+      <h2 style="margin-top:18px">消費・浪費・投資のバランス</h2>
+      <div class="bar-wrap" id="clsBar"></div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--blue)"></span>消費(目安70%)</span>
+        <span><span class="dot" style="background:var(--orange)"></span>浪費(目安5%)</span>
+        <span><span class="dot" style="background:var(--green)"></span>投資(目安25%)</span>
+      </div>
+      <p class="k-note" id="clsNote" style="font-size:12px;margin-top:6px"></p>
+
+      <h2 style="margin-top:18px">生活防衛資金の達成度</h2>
+      <div class="progress-wrap"><div class="progress-bar" id="defenseBar">0%</div></div>
+      <p class="k-note" id="defenseNote" style="font-size:12px"></p>
+    </div>
+
+    <div class="card">
+      <h2>📝 あなたの宿題リスト(入力内容から自動で提案)</h2>
+      <p class="lead" style="margin:0 0 8px">リベ大の宿題の順番(<b>家計の見える化 → 固定費の削減 → 生活防衛資金 → 投資 → 稼ぐ</b>)に沿って、いま入力されている数字から「どこを改善するといちばん効果が大きいか」を自動で提案します。</p>
+      <ul class="hw-list" id="hwList"></ul>
+      <p class="k-note" id="hwTotal" style="font-size:13px;margin-top:10px"></p>
+    </div>
+
+    <div class="card">
+      <h2>✂️ 固定費見直しチェックリスト(リベ大の定番)</h2>
+      <p class="lead" style="margin:0 0 8px">効果が大きい順に並べています。1つ見直すだけで年間数万〜数十万円変わることもあります。やったものにチェック✅(保存されます)。</p>
+      <ul class="check-list">
+        <li><input type="checkbox" id="chk1"><span><b>スマホを格安SIMにする</b><br><span class="tip">大手キャリア→格安SIM/オンラインプランで1人あたり月5,000円前後の節約になることも。</span></span></li>
+        <li><input type="checkbox" id="chk2"><span><b>保険を見直す(必要なのは基本3つだけ)</b><br><span class="tip">リベ大の考え方では、必要な民間保険は「掛け捨て生命保険(扶養家族がいる場合)・火災保険・自動車保険(対人対物無制限)」の3つ。貯蓄型保険・医療保険は公的保険+貯金でカバーが基本。</span></span></li>
+        <li><input type="checkbox" id="chk3"><span><b>電気・ガス会社を乗り換える</b><br><span class="tip">比較サイトで数分の手続き。使い方は同じで料金だけ下がることが多い。</span></span></li>
+        <li><input type="checkbox" id="chk4"><span><b>車は本当に必要か考える</b><br><span class="tip">車は生涯で数千万円レベルの支出。手放す・カーシェア・中古車一括払いなどの選択肢も。</span></span></li>
+        <li><input type="checkbox" id="chk5"><span><b>家賃・住宅ローンを見直す</b><br><span class="tip">賃貸なら更新時の家賃交渉や住み替え、ローンなら借り換えで総額が大きく変わる。</span></span></li>
+        <li><input type="checkbox" id="chk6"><span><b>使っていないサブスクを解約する</b><br><span class="tip">月500円でも年6,000円。3ヶ月使っていなければ解約が目安。</span></span></li>
+        <li><input type="checkbox" id="chk7"><span><b>税金を最適化する(ふるさと納税・NISA・iDeCo)</b><br><span class="tip">ふるさと納税は実質2,000円で返礼品がもらえる。投資はまずNISAの活用から。</span></span></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ ライフプランタブ ============ -->
+  <div id="tabLife" style="display:none">
+
+    <div class="card">
+      <h2>⚙️ 基本設定</h2>
+      <p class="lead" style="margin:0 0 12px">年収・年間支出は「家計管理」タブの入力から自動で計算します(上書きしたい場合だけ入力)。金額は<b>万円</b>単位です。</p>
+      <div class="grid">
+        <label class="field"><b>現在の年齢</b><input type="number" id="lifeAge" value="40"> <span class="unit">歳</span></label>
+        <label class="field"><b>退職する年齢</b><input type="number" id="retireAge" value="65"> <span class="unit">歳(この歳から給与収入なし)</span></label>
+        <label class="field"><b>想定寿命</b><input type="number" id="lifeEnd" value="95"> <span class="unit">歳</span></label>
+        <label class="field"><b>手取り年収(上書き用)</b><input type="number" id="ovIncome" placeholder="自動"> <span class="unit">万円/年(空欄=家計タブ×12)</span></label>
+        <label class="field"><b>年間支出(上書き用)</b><input type="number" id="ovExpense" placeholder="自動"> <span class="unit">万円/年(空欄=家計タブ×12)</span></label>
+        <label class="field"><b>昇給率(年)</b><input type="number" id="incomeGrowth" value="1" step="0.1"> <span class="unit">%/年</span></label>
+        <label class="field"><b>想定リターン(年)</b><input type="number" id="returnRate" value="5" step="0.1"> <span class="unit">%/年(リベ大の想定は年利5%前後が目安)</span></label>
+        <label class="field"><b>インフレ率(年)</b><input type="number" id="inflation" value="1" step="0.1"> <span class="unit">%/年(支出・年金に適用)</span></label>
+        <label class="field"><b>世帯の年金(月額見込み)</b><input type="number" id="pensionMonthly" value="18" step="0.5"> <span class="unit">万円/月(ねんきん定期便で確認)</span></label>
+        <label class="field"><b>年金の受給開始年齢</b><input type="number" id="pensionStart" value="65"> <span class="unit">歳</span></label>
+        <label class="field"><b>退職後の生活費(現在比)</b><input type="number" id="postRetireRatio" value="90"> <span class="unit">%(仕事関連の支出が減る分など)</span></label>
+        <label class="field"><b>退職金</b><input type="number" id="retireBonus" value="0" step="10"> <span class="unit">万円(退職する年に受取)</span></label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>🎉 ライフイベント(大きな支出の予定)</h2>
+      <p class="lead" style="margin:0 0 10px">結婚・出産・住宅の頭金・車の買い替え・子供の大学費用・リフォームなど、大きな出費を<b>今の価値の万円</b>で追加してください(その年齢の時点でインフレ調整して差し引きます)。</p>
+      <div id="eventRows"></div>
+      <button class="btn-add" onclick="addEventRow()">+ イベントを追加</button>
+    </div>
+
+    <div class="card">
+      <h2>📋 シミュレーション結果(入力すると自動で更新)</h2>
+      <div class="kpi-grid" id="lifeKpiGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>📈 資産推移(緑の点線 = FIRE基準額: 年間生活費の25年分)</h2>
+      <canvas id="lifeChart" width="940" height="380"></canvas>
+      <p class="k-note" style="font-size:12px;color:var(--sub)">青い線(資産合計)が緑の点線(生活費25年分 = 4%ルールの目安)を上回ったら、理論上は資産収入だけで生活費をまかなえる「FIRE圏内」です。</p>
+    </div>
+
+    <div class="card">
+      <h2>📅 年ごとの詳細(水色 = 退職の年 / 緑 = FIRE圏内 / 赤 = 資産が尽きた年)</h2>
+      <div class="detail-scroll"><table class="detail" id="lifeTable"></table></div>
+    </div>
+
+    <div class="card">
+      <h2>⚠️ このシミュレーションの前提と注意点</h2>
+      <ul class="notes">
+        <li>毎年の黒字は、まず<b>生活防衛資金の目標額まで現金</b>に貯め、それを超えた分を投資に回すルールで計算しています(リベ大の「貯める→増やす」の順番)。</li>
+        <li>赤字の年は投資から取り崩し、投資が尽きたら現金を使います。現金もマイナスになった年が「資産が尽きた年」です。</li>
+        <li>リターンは投資部分にだけかかり、現金は利息0%として扱います。リターンは税引き後のイメージで入力してください(NISA枠内なら非課税)。</li>
+        <li>4%ルール(生活費25年分)は米国株の過去実績に基づく<b>目安</b>であり、将来を保証するものではありません。</li>
+        <li>年金はインフレに連動して増える前提です(実際はマクロ経済スライドで実質目減りする可能性があります)。正確な見込み額はねんきんネットで確認を。</li>
+        <li>ライフイベントの金額はその年齢の時点までインフレ調整されます。教育費など長期のものは1年ごとに分けて入れるとより正確です。</li>
+        <li>税金・社会保険料の変化(退職後の国保など)は年間支出に含める想定です。気になる場合は「年間支出(上書き用)」で調整してください。</li>
+      </ul>
+    </div>
+  </div>
+
+  <button class="btn-reset" onclick="resetAll()">🗑️ 入力データをすべてリセット</button>
+</div>
+
+<script>
+// ============================================================
+// 定数・初期データ
+// ============================================================
+const STORAGE_KEY = 'kakei-lifeplan-v1';
+
+// 固定費の初期項目(リベ大の六大固定費: 通信費・光熱費・保険・家・車・税金 を意識した並び)
+const DEFAULT_FIXED = [
+  { name: '住居費(家賃・住宅ローン)', amount: 70000, cls: 'shohi' },
+  { name: '水道光熱費', amount: 12000, cls: 'shohi' },
+  { name: '通信費(スマホ・ネット)', amount: 8000, cls: 'shohi' },
+  { name: '保険', amount: 5000, cls: 'shohi' },
+  { name: '車(ローン・駐車場・保険・ガソリン)', amount: 0, cls: 'shohi' },
+  { name: 'サブスク(動画・音楽など)', amount: 2000, cls: 'rohi' },
+  { name: 'その他の固定費', amount: 0, cls: 'shohi' },
+];
+
+// 変動費の初期項目
+const DEFAULT_VAR = [
+  { name: '食費(自炊)', amount: 40000, cls: 'shohi' },
+  { name: '外食', amount: 10000, cls: 'rohi' },
+  { name: '日用品', amount: 8000, cls: 'shohi' },
+  { name: '交際費', amount: 10000, cls: 'rohi' },
+  { name: '趣味・娯楽', amount: 10000, cls: 'rohi' },
+  { name: '被服・美容', amount: 8000, cls: 'shohi' },
+  { name: '医療費', amount: 3000, cls: 'shohi' },
+  { name: '交通費', amount: 5000, cls: 'shohi' },
+  { name: '書籍・学び(自己投資)', amount: 3000, cls: 'toshi' },
+  { name: '特別費の積立(車検・帰省・冠婚葬祭の月割り)', amount: 10000, cls: 'shohi' },
+];
+
+const CLS_LABEL = { shohi: '消費', rohi: '浪費', toshi: '投資' };
+const CLS_COLOR = { shohi: 'var(--blue)', rohi: 'var(--orange)', toshi: 'var(--green)' };
+
+// ============================================================
+// 支出行・イベント行の生成
+// ============================================================
+function clsSelect(selected) {
+  return `<select class="e-cls" onchange="update()">
+    <option value="shohi"${selected === 'shohi' ? ' selected' : ''}>消費</option>
+    <option value="rohi"${selected === 'rohi' ? ' selected' : ''}>浪費</option>
+    <option value="toshi"${selected === 'toshi' ? ' selected' : ''}>投資</option>
+  </select>`;
+}
+
+function addExpRow(section, data) {
+  const d = data || { name: '', amount: 0, cls: 'shohi' };
+  const div = document.createElement('div');
+  div.className = 'exp-row';
+  div.innerHTML = `
+    <input type="text" class="e-name" value="${escapeHtml(d.name)}" placeholder="項目名" oninput="update()">
+    <input type="number" class="e-amount" value="${d.amount}" step="1000" oninput="update()">
+    ${clsSelect(d.cls)}
+    <button class="btn-del" onclick="this.parentElement.remove(); update()">削除</button>`;
+  document.getElementById(section === 'fixed' ? 'fixedRows' : 'varRows').appendChild(div);
+}
+
+function addEventRow(data) {
+  const d = data || { age: '', name: '', cost: '' };
+  const div = document.createElement('div');
+  div.className = 'ev-row';
+  div.innerHTML = `
+    <input type="number" class="ev-age" value="${d.age}" placeholder="年齢" oninput="update()"><span class="unit">歳のとき</span>
+    <input type="text" class="ev-name" value="${escapeHtml(d.name)}" placeholder="例: 車の買い替え" oninput="update()">
+    <input type="number" class="ev-cost" value="${d.cost}" step="10" placeholder="金額" oninput="update()"><span class="unit">万円</span>
+    <button class="btn-del" onclick="this.parentElement.remove(); update()">削除</button>`;
+  document.getElementById('eventRows').appendChild(div);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ============================================================
+// 読み取り
+// ============================================================
+function num(id) { return parseFloat(document.getElementById(id).value) || 0; }
+function raw(id) { return document.getElementById(id).value; }
+
+function readRows(containerId) {
+  return [...document.getElementById(containerId).querySelectorAll('.exp-row')].map(row => ({
+    name: row.querySelector('.e-name').value,
+    amount: parseFloat(row.querySelector('.e-amount').value) || 0,
+    cls: row.querySelector('.e-cls').value
+  }));
+}
+
+function readEvents() {
+  return [...document.querySelectorAll('#eventRows .ev-row')].map(row => ({
+    age: parseFloat(row.querySelector('.ev-age').value) || 0,
+    name: row.querySelector('.ev-name').value,
+    cost: parseFloat(row.querySelector('.ev-cost').value) || 0
+  })).filter(e => e.age > 0 && e.cost > 0);
+}
+
+// 家計管理タブの集計
+function readKakei() {
+  const income = num('incSelf') + num('incSpouse') + num('incSide') + num('incOther');
+  const fixed = readRows('fixedRows');
+  const vari = readRows('varRows');
+  const fixedTotal = fixed.reduce((s, r) => s + r.amount, 0);
+  const varTotal = vari.reduce((s, r) => s + r.amount, 0);
+  const expense = fixedTotal + varTotal;
+  const cls = { shohi: 0, rohi: 0, toshi: 0 };
+  for (const r of [...fixed, ...vari]) cls[r.cls] += r.amount;
+  return {
+    income, fixedTotal, varTotal, expense, cls, fixed, vari,
+    balance: income - expense,
+    cashNow: num('cashNow'), investNow: num('investNow'),
+    defenseMonths: parseFloat(document.getElementById('jobType').value)
+  };
+}
+
+// ============================================================
+// 表示ヘルパー
+// ============================================================
+function yen(n) { return Math.round(n).toLocaleString() + '円'; }
+function man(n) {
+  if (Math.abs(n) >= 10000) return (n / 10000).toFixed(2) + '億円';
+  return Math.round(n).toLocaleString() + '万円';
+}
+function kpi(label, value, note, noteCls) {
+  return `<div class="kpi"><div class="k-label">${label}</div><div class="k-value">${value}</div><div class="k-note ${noteCls || ''}">${note || ''}</div></div>`;
+}
+
+// ============================================================
+// 家計管理タブの診断
+// ============================================================
+function renderKakei(k) {
+  document.getElementById('incTotal').textContent = yen(k.income);
+  document.getElementById('fixedTotal').textContent = yen(k.fixedTotal);
+  document.getElementById('varTotal').textContent = yen(k.varTotal);
+
+  // --- 貯蓄率(リベ大: 手取りの1〜2割を先取り貯蓄、最終的には3割以上を目指す) ---
+  const rate = k.income > 0 ? k.balance / k.income * 100 : null;
+  let rateHtml, rateNote, rateCls;
+  if (rate === null) { rateHtml = '—'; rateNote = '収入を入力してください'; rateCls = ''; }
+  else {
+    rateHtml = rate.toFixed(1) + '%';
+    if (rate < 0) { rateNote = '❌ 赤字です。まずは固定費の見直しから始めましょう'; rateCls = 'bad'; }
+    else if (rate < 10) { rateNote = 'まずは貯蓄率10%(手取りの1割)を目指しましょう'; rateCls = 'warn'; }
+    else if (rate < 20) { rateNote = '👍 良いペース! 次は20%を目指しましょう'; rateCls = 'good'; }
+    else if (rate < 30) { rateNote = '🎉 優秀です! この調子で「増やす力」へ'; rateCls = 'good'; }
+    else { rateNote = '🏆 素晴らしい貯蓄率です! 資産形成が大きく加速します'; rateCls = 'good'; }
+  }
+
+  // --- 固定費の割合(手取りの50%以下が目安とされることが多い) ---
+  const fixedRate = k.income > 0 ? k.fixedTotal / k.income * 100 : null;
+  let fixedNote = '', fixedCls = '';
+  if (fixedRate !== null) {
+    if (fixedRate > 55) { fixedNote = '手取りに対して固定費が重すぎます。見直しチェックリストへ!'; fixedCls = 'bad'; }
+    else if (fixedRate > 45) { fixedNote = 'やや高めです。目安は手取りの45%以下'; fixedCls = 'warn'; }
+    else { fixedNote = '👍 固定費はコントロールできています(目安45%以下)'; fixedCls = 'good'; }
+  }
+
+  const balCls = k.balance >= 0 ? 'good' : 'bad';
+  document.getElementById('kpiGrid').innerHTML =
+    kpi('月の収支(収入 − 支出)', `<span class="${balCls}">${k.balance >= 0 ? '+' : ''}${yen(k.balance)}</span>`,
+        k.balance >= 0 ? 'この黒字が毎月の「貯蓄+投資」に回せるお金です' : '支出が収入を上回っています', balCls) +
+    kpi('貯蓄率', `<span class="${rateCls}">${rateHtml}</span>`, rateNote, rateCls) +
+    kpi('支出合計', yen(k.expense) + '/月', `年間にすると約${man(k.expense * 12 / 10000)}`) +
+    kpi('固定費の割合', fixedRate === null ? '—' : fixedRate.toFixed(1) + '%', fixedNote, fixedCls);
+
+  // --- 消費・浪費・投資バー ---
+  const total = k.cls.shohi + k.cls.rohi + k.cls.toshi;
+  const bar = document.getElementById('clsBar');
+  if (total > 0) {
+    bar.innerHTML = ['shohi', 'rohi', 'toshi'].map(c => {
+      const pct = k.cls[c] / total * 100;
+      return pct > 0 ? `<div class="bar-seg" style="width:${pct}%;background:${CLS_COLOR[c]}">${pct >= 8 ? CLS_LABEL[c] + ' ' + pct.toFixed(0) + '%' : ''}</div>` : '';
+    }).join('');
+    const rohiPct = k.cls.rohi / total * 100;
+    const toshiPct = k.cls.toshi / total * 100;
+    let note = `消費 ${(k.cls.shohi / total * 100).toFixed(1)}% / 浪費 ${rohiPct.toFixed(1)}% / 投資 ${toshiPct.toFixed(1)}%。`;
+    if (rohiPct > 15) note += ' 浪費がやや多めです。ただし人生を豊かにする浪費は悪ではありません。「これは自分の幸せにつながっているか?」で見直しを。';
+    else note += ' 良いバランスです。浪費をゼロにする必要はありません(使う力も大事)。';
+    document.getElementById('clsNote').textContent = note;
+  } else {
+    bar.innerHTML = '';
+    document.getElementById('clsNote').textContent = '支出を入力すると表示されます。';
+  }
+
+  // --- 生活防衛資金 ---
+  const target = k.expense * k.defenseMonths / 10000; // 万円
+  const pct = target > 0 ? Math.min(100, k.cashNow / target * 100) : 0;
+  const dbar = document.getElementById('defenseBar');
+  dbar.style.width = Math.max(8, pct) + '%';
+  dbar.textContent = pct.toFixed(0) + '%';
+  dbar.style.background = pct >= 100 ? 'var(--green)' : pct >= 50 ? 'var(--orange)' : 'var(--red)';
+  let dnote;
+  if (target <= 0) dnote = '支出を入力すると目標額が計算されます。';
+  else if (pct >= 100) dnote = `✅ 達成! 目標 ${man(target)}(生活費${k.defenseMonths}ヶ月分)に対して現金 ${man(k.cashNow)}。これを超える現金は投資に回すのがリベ大の考え方です。`;
+  else dnote = `目標 ${man(target)}(生活費${k.defenseMonths}ヶ月分)に対して現金 ${man(k.cashNow)}。あと${man(target - k.cashNow)}。防衛資金が貯まるまでは投資より現金優先でOK。`;
+  document.getElementById('defenseNote').textContent = dnote;
+}
+
+// ============================================================
+// 宿題リスト(入力値からの自動アドバイス)
+// ============================================================
+// 項目名のキーワードで支出を推定する(項目名を変えても大体拾えるように)
+function sumByName(rows, include, exclude) {
+  return rows.filter(r => include.test(r.name) && !(exclude && exclude.test(r.name)))
+             .reduce((s, r) => s + r.amount, 0);
+}
+
+function renderHomework(k) {
+  const all = [...k.fixed, ...k.vari];
+  const adults = 1 + (num('incSpouse') > 0 ? 1 : 0);
+  const telecom = sumByName(all, /通信|スマホ|携帯|ネット/, /車/);
+  const insurance = sumByName(all, /保険/, /車|自動車/);
+  const housing = sumByName(all, /住居|家賃|住宅/);
+  const car = sumByName(all, /車|カーシェア/, /自転車/);
+  const utilities = sumByName(all, /水道|光熱|電気|ガス/);
+  const subs = sumByName(all, /サブスク|動画|音楽|アプリ/);
+  const clsTotal = k.cls.shohi + k.cls.rohi + k.cls.toshi;
+  const rohiPct = clsTotal > 0 ? k.cls.rohi / clsTotal * 100 : 0;
+  const defenseTarget = k.expense * k.defenseMonths / 10000; // 万円
+  const defenseOk = defenseTarget > 0 && k.cashNow >= defenseTarget;
+
+  // save は「見直したら浮きそうな金額」の控えめな概算(円/月)
+  const items = [];
+  const add = (pri, title, detail, save) => items.push({ pri, title, detail, save: save || 0 });
+
+  // STEP0: 家計の見える化
+  if (k.income > 0 && k.expense > 0) {
+    add(0, '家計の見える化', 'このシートで収支を把握できています。まずは毎月1回、数字を更新する習慣を。');
+  } else {
+    add(1, '家計の見える化から', '収入と支出を入力しましょう。現状を知ることがすべてのスタートです。');
+  }
+
+  // 赤字の解消
+  if (k.income > 0 && k.balance < 0) {
+    add(1, '赤字の解消', `支出が収入を月${yen(-k.balance)}上回っています。生活の満足度が下がりにくい固定費(下の項目)から削るのがリベ大の鉄則です。`);
+  }
+
+  // STEP1: 固定費の見直し
+  if (telecom > adults * 4000) {
+    add(1, 'スマホを格安SIMにする', `通信費が月${yen(telecom)}かかっています。格安SIM・オンラインプランなら1人あたり月3,000円前後が目安です。`, Math.max(0, telecom - adults * 3000));
+  } else if (telecom > 0) {
+    add(0, '通信費', `月${yen(telecom)}に抑えられています。`);
+  }
+
+  if (insurance > 8000) {
+    add(1, '保険の見直し', `保険料が月${yen(insurance)}。リベ大の考え方では、必要な民間保険は基本「掛け捨て生命保険(扶養家族がいる場合)・火災保険・自動車保険」の3つだけ。貯蓄型保険・医療保険は公的保険+貯金でカバーするのが原則です。`, Math.max(0, insurance - 5000));
+  } else if (insurance > 5000) {
+    add(2, '保険の点検', `保険料は月${yen(insurance)}。貯蓄型や医療保険が混ざっていないか、内容だけ点検を。`, Math.max(0, insurance - 5000));
+  } else if (insurance > 0) {
+    add(0, '保険', `月${yen(insurance)}に抑えられています。掛け捨て中心ならOKです。`);
+  }
+
+  if (utilities > 15000) {
+    add(2, '電気・ガス会社の乗り換え', `水道光熱費が月${yen(utilities)}。電力・ガスの乗り換えは比較サイトで数分、使い勝手は変わらず1割前後安くなることが多いです。`, Math.round(utilities * 0.1));
+  }
+
+  if (k.income > 0 && housing > k.income * 0.3) {
+    add(2, '住居費の見直し', `住居費が手取りの${(housing / k.income * 100).toFixed(0)}%を占めています(目安は3割以下)。賃貸なら更新時の家賃交渉や住み替え、ローンなら借り換えの検討を。`);
+  }
+
+  if (car > 25000) {
+    add(2, '車のコストを見直す', `車関連が月${yen(car)} = 年間${yen(car * 12)}。「本当に必要か」「カーシェアや中古車一括払いで代替できないか」を一度検討する価値があります。`);
+  }
+
+  if (subs > 3000) {
+    add(3, 'サブスクの棚卸し', `サブスクが月${yen(subs)}。3ヶ月使っていないものは解約が目安です。`, Math.round(subs * 0.5));
+  }
+
+  if (rohiPct > 15) {
+    add(3, '浪費の最適化', `支出のうち浪費が${rohiPct.toFixed(0)}%(目安は5%)。ゼロにする必要はありません。「自分の幸せにつながっているか」で1つずつ取捨選択を。`);
+  }
+
+  // STEP2: 生活防衛資金 → STEP3: 投資
+  if (defenseTarget > 0) {
+    if (!defenseOk) {
+      add(2, '生活防衛資金を貯める', `目標${man(defenseTarget)}(生活費${k.defenseMonths}ヶ月分)まであと${man(defenseTarget - k.cashNow)}。ここまでは投資より現金優先。毎月の黒字をまず貯金へ。`);
+    } else {
+      add(0, '生活防衛資金', `目標${man(defenseTarget)}を達成済み。これを超える現金は投資に回せます。`);
+      if (k.investNow <= 0) {
+        add(2, 'NISAでインデックス投資を始める', '防衛資金が貯まったら次は「増やす力」。ネット証券(SBI・楽天など)でNISA口座を開設し、全世界株式やS&P500のインデックスファンドを毎月コツコツ積み立てるのがリベ大の王道です。');
+      }
+    }
+  }
+  if (k.investNow > 0) {
+    add(0, '増やす力', `投資額${man(k.investNow)}でスタート済み。長期・積立・分散を淡々と続けましょう。`);
+  }
+
+  // STEP4: 稼ぐ力
+  if (num('incSide') <= 0) {
+    add(3, '稼ぐ力(副業)を育てる', '節約には限界がありますが、稼ぐ力に上限はありません。月1万円の副業収入は、4%ルール換算で資産300万円を持っているのと同じ価値があります。');
+  } else {
+    add(0, '稼ぐ力', `副業・事業収入が月${yen(num('incSide'))}あります。素晴らしい!`);
+  }
+
+  // 優先度順に並べる(達成済みは最後)
+  items.sort((a, b) => (a.pri === 0 ? 9 : a.pri) - (b.pri === 0 ? 9 : b.pri));
+  const BADGE = { 1: ['hw-p1', '最優先'], 2: ['hw-p2', 'おすすめ'], 3: ['hw-p3', '余裕があれば'], 0: ['hw-p0', 'クリア✓'] };
+  document.getElementById('hwList').innerHTML = items.map(it => {
+    const [cls, label] = BADGE[it.pri];
+    const save = it.save > 0 ? ` <span class="hw-save">→ 年間 約${yen(it.save * 12)}の改善見込み</span>` : '';
+    return `<li class="hw-item"><span class="hw-badge ${cls}">${label}</span><span><b>${it.title}</b><div class="hw-detail">${it.detail}${save}</div></span></li>`;
+  }).join('');
+
+  const totalSave = items.reduce((s, it) => s + it.save, 0);
+  const todo = items.filter(it => it.pri !== 0).length;
+  document.getElementById('hwTotal').innerHTML =
+    todo === 0
+      ? '🎉 宿題はすべてクリアしています! あとは淡々と続けるだけです。'
+      : (totalSave > 0 ? `💡 金額を出せる宿題だけで、合計 <b class="hw-save">年間 約${yen(totalSave * 12)}</b> の改善が見込めます(控えめな概算)。浮いたお金を投資に回せば、さらに大きな差になります。` : `残りの宿題は${todo}個。上から順に取り組むのがおすすめです。`);
+}
+
+// ============================================================
+// ライフプランのシミュレーション
+// ============================================================
+function simulateLife(k) {
+  const p = {
+    age: num('lifeAge'), retireAge: num('retireAge'), lifeEnd: num('lifeEnd'),
+    // 上書きが空欄なら家計タブから自動計算(円/月 → 万円/年)
+    annualIncome: raw('ovIncome') !== '' ? num('ovIncome') : k.income * 12 / 10000,
+    annualExpense: raw('ovExpense') !== '' ? num('ovExpense') : k.expense * 12 / 10000,
+    growth: num('incomeGrowth') / 100, ret: num('returnRate') / 100, infl: num('inflation') / 100,
+    pension: num('pensionMonthly'), pensionStart: num('pensionStart'),
+    postRatio: num('postRetireRatio') / 100, retireBonus: num('retireBonus'),
+    events: readEvents(),
+    defenseTarget: k.expense * k.defenseMonths / 10000 // 万円(今日の価値)
+  };
+  let invest = k.investNow, cash = k.cashNow;
+  const rows = [];
+  let deadAge = null, fireAge = null;
+
+  for (let age = p.age; age <= p.lifeEnd; age++) {
+    const t = age - p.age;
+    const infl = Math.pow(1 + p.infl, t);
+
+    let income = 0;
+    if (age < p.retireAge) income = p.annualIncome * Math.pow(1 + p.growth, t);
+    if (age === p.retireAge) income += p.retireBonus;
+    let pension = 0;
+    if (age >= p.pensionStart) pension = p.pension * 12 * infl;
+
+    const living = p.annualExpense * (age >= p.retireAge ? p.postRatio : 1) * infl;
+    let events = 0;
+    for (const e of p.events) if (e.age === age) events += e.cost * infl;
+
+    const balance = income + pension - living - events;
+
+    // 投資部分にだけリターンがかかる
+    invest *= (1 + p.ret);
+
+    if (balance >= 0) {
+      // 黒字: まず生活防衛資金(インフレ調整後)まで現金、超えた分は投資へ
+      const defense = p.defenseTarget * infl;
+      const toCash = Math.max(0, Math.min(balance, defense - cash));
+      cash += toCash;
+      invest += balance - toCash;
+    } else {
+      // 赤字: 投資から取り崩し、尽きたら現金から
+      invest += balance;
+      if (invest < 0) { cash += invest; invest = 0; }
+    }
+
+    const assets = invest + cash;
+    const fireBase = living * 25; // 4%ルール: その年の生活費25年分
+    const isFire = assets >= fireBase && fireBase > 0;
+    if (isFire && fireAge === null) fireAge = age;
+    rows.push({ age, income, pension, living, events, balance, invest, cash, assets, fireBase, isFire });
+    if (cash < 0 && deadAge === null) { deadAge = age; }
+  }
+  return { p, rows, deadAge, fireAge };
+}
+
+function renderLife(k) {
+  const sim = simulateLife(k);
+  const { p, rows, deadAge, fireAge } = sim;
+
+  // 上書き欄のプレースホルダーに自動計算値を表示
+  document.getElementById('ovIncome').placeholder = '自動: ' + Math.round(k.income * 12 / 10000) + '万円';
+  document.getElementById('ovExpense').placeholder = '自動: ' + Math.round(k.expense * 12 / 10000) + '万円';
+
+  // --- KPI ---
+  const at65 = rows.find(r => r.age === 65);
+  const atRetire = rows.find(r => r.age === p.retireAge);
+  const last = rows[rows.length - 1];
+  let survive, surviveCls;
+  if (deadAge !== null) { survive = deadAge + '歳で資産が尽きます'; surviveCls = 'bad'; }
+  else { survive = `✅ ${p.lifeEnd}歳まで資産がもちます`; surviveCls = 'good'; }
+
+  document.getElementById('lifeKpiGrid').innerHTML =
+    kpi('資産の寿命', `<span class="${surviveCls}">${deadAge !== null ? deadAge + '歳' : p.lifeEnd + '歳+'}</span>`, survive, surviveCls) +
+    kpi('退職時(' + p.retireAge + '歳)の資産', atRetire ? man(atRetire.assets) : '—', '') +
+    kpi('65歳時点の資産', at65 ? man(at65.assets) : '—', '') +
+    kpi('FIRE圏内に入る年齢', fireAge !== null ? fireAge + '歳' : '期間内には届かず',
+        fireAge !== null ? 'その年の生活費25年分(4%ルール)を資産が上回る年齢' : '貯蓄率アップ・入金力アップで手前に引き寄せられます',
+        fireAge !== null ? 'good' : 'warn') +
+    kpi('想定寿命時点の資産', man(Math.max(0, last.assets)), deadAge === null && last.assets > 0 ? '残る見込みの資産(相続・使い切りの余地)' : '');
+
+  drawLifeChart(sim);
+  renderLifeTable(sim);
+}
+
+function drawLifeChart(sim) {
+  const { p, rows, deadAge } = sim;
+  const cv = document.getElementById('lifeChart');
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  const L = 70, R = 20, T = 20, B = 40;
+  const W = cv.width - L - R, H = cv.height - T - B;
+
+  let maxY = 0;
+  for (const r of rows) maxY = Math.max(maxY, r.assets, r.fireBase);
+  if (maxY <= 0) maxY = 1000;
+  maxY *= 1.08;
+  const x = age => L + (age - p.age) / Math.max(1, p.lifeEnd - p.age) * W;
+  const y = v => T + H - (Math.max(0, v) / maxY) * H;
+
+  // グリッドと軸
+  ctx.strokeStyle = '#e2e8f0'; ctx.fillStyle = '#64748b'; ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const v = maxY / 5 * i;
+    ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(L + W, y(v)); ctx.stroke();
+    ctx.fillText(v >= 10000 ? (v / 10000).toFixed(1) + '億' : Math.round(v).toLocaleString() + '万', L - 6, y(v) + 4);
+  }
+  ctx.textAlign = 'center';
+  for (let age = Math.ceil(p.age / 5) * 5; age <= p.lifeEnd; age += 5) {
+    ctx.fillText(age + '歳', x(age), T + H + 18);
+  }
+
+  // 退職年齢の縦線
+  if (p.retireAge > p.age && p.retireAge < p.lifeEnd) {
+    ctx.strokeStyle = '#94a3b8'; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(x(p.retireAge), T); ctx.lineTo(x(p.retireAge), T + H); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('退職', x(p.retireAge), T + 12);
+  }
+
+  // FIRE基準線(生活費25年分・点線)
+  ctx.strokeStyle = 'var(--green)'; ctx.strokeStyle = '#16a34a'; ctx.setLineDash([6, 5]); ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  rows.forEach((r, i) => { i === 0 ? ctx.moveTo(x(r.age), y(r.fireBase)) : ctx.lineTo(x(r.age), y(r.fireBase)); });
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 資産合計の線
+  ctx.strokeStyle = '#2563eb'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x(p.age), y(rows.length ? rows[0].cash + rows[0].invest - rows[0].balance : 0));
+  rows.forEach((r, i) => { i === 0 ? ctx.moveTo(x(r.age), y(r.assets)) : ctx.lineTo(x(r.age), y(r.assets)); });
+  ctx.stroke();
+  ctx.lineWidth = 1;
+
+  // 資産が尽きた点
+  if (deadAge !== null) {
+    const r = rows.find(r2 => r2.age === deadAge);
+    if (r) {
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath(); ctx.arc(x(r.age), y(0), 6, 0, Math.PI * 2); ctx.fill();
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`${deadAge}歳で資産が尽きる`, x(r.age), y(0) - 12);
+    }
+  }
+}
+
+function renderLifeTable(sim) {
+  const { p, rows, deadAge } = sim;
+  let html = `<tr><th>年齢</th><th>収入(手取)</th><th>年金</th><th>生活費</th><th>イベント</th><th>年間収支</th><th>資産合計</th><th>うち投資</th><th>うち現金</th></tr>`;
+  for (const r of rows) {
+    let cls = '';
+    if (r.age === deadAge) cls = ' class="dead-row"';
+    else if (r.age === p.retireAge) cls = ' class="retire-row"';
+    else if (r.isFire) cls = ' class="fire-row"';
+    const evNames = sim.p.events.filter(e => e.age === r.age).map(e => e.name).filter(Boolean).join('・');
+    html += `<tr${cls}><td>${r.age}歳${r.age === p.retireAge ? ' 🏖️' : ''}${r.age === deadAge ? ' ⚠️' : ''}</td>
+      <td>${man(r.income)}</td><td>${man(r.pension)}</td><td>${man(r.living)}</td>
+      <td>${r.events > 0 ? man(r.events) + (evNames ? '<br><span style="font-size:10.5px;color:var(--sub)">' + escapeHtml(evNames) + '</span>' : '') : '—'}</td>
+      <td${r.balance < 0 ? ' style="color:var(--red)"' : ''}>${r.balance >= 0 ? '+' : ''}${man(r.balance)}</td>
+      <td${r.assets < 0 ? ' class="ng"' : ''}>${man(r.assets)}</td>
+      <td>${man(r.invest)}</td><td${r.cash < 0 ? ' class="ng"' : ''}>${man(r.cash)}</td></tr>`;
+  }
+  document.getElementById('lifeTable').innerHTML = html;
+}
+
+// ============================================================
+// タブ切り替え・保存・復元
+// ============================================================
+function switchTab(tab) {
+  document.getElementById('tabKakei').style.display = tab === 'kakei' ? 'block' : 'none';
+  document.getElementById('tabLife').style.display = tab === 'life' ? 'block' : 'none';
+  document.getElementById('tabBtnKakei').className = tab === 'kakei' ? 'on' : '';
+  document.getElementById('tabBtnLife').className = tab === 'life' ? 'on' : '';
+}
+
+const SAVE_IDS = [
+  'incSelf', 'incSpouse', 'incSide', 'incOther', 'cashNow', 'investNow', 'jobType',
+  'lifeAge', 'retireAge', 'lifeEnd', 'ovIncome', 'ovExpense', 'incomeGrowth', 'returnRate',
+  'inflation', 'pensionMonthly', 'pensionStart', 'postRetireRatio', 'retireBonus',
+  'chk1', 'chk2', 'chk3', 'chk4', 'chk5', 'chk6', 'chk7'
+];
+
+function saveAll() {
+  const data = { inputs: {}, checks: {}, fixed: readRows('fixedRows'), vari: readRows('varRows'), events: [] };
+  for (const id of SAVE_IDS) {
+    const el = document.getElementById(id);
+    if (el.type === 'checkbox') data.checks[id] = el.checked;
+    else data.inputs[id] = el.value;
+  }
+  data.events = [...document.querySelectorAll('#eventRows .ev-row')].map(row => ({
+    age: row.querySelector('.ev-age').value,
+    name: row.querySelector('.ev-name').value,
+    cost: row.querySelector('.ev-cost').value
+  }));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* プライベートモード等では保存しない */ }
+}
+
+function loadAll() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { data = null; }
+
+  // 支出行(保存があれば復元、なければ初期項目)
+  (data && Array.isArray(data.fixed) && data.fixed.length ? data.fixed : DEFAULT_FIXED).forEach(r => addExpRow('fixed', r));
+  (data && Array.isArray(data.vari) && data.vari.length ? data.vari : DEFAULT_VAR).forEach(r => addExpRow('var', r));
+  (data && Array.isArray(data.events) ? data.events : []).forEach(e => addEventRow(e));
+
+  if (data) {
+    for (const id of SAVE_IDS) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      if (el.type === 'checkbox') { if (id in data.checks) el.checked = data.checks[id]; }
+      else if (data.inputs && id in data.inputs) el.value = data.inputs[id];
+    }
+  }
+}
+
+function resetAll() {
+  if (!confirm('入力したデータをすべて消して初期状態に戻します。よろしいですか?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+// 入力のたびに再計算+保存
+function update() {
+  const k = readKakei();
+  renderKakei(k);
+  renderHomework(k);
+  renderLife(k);
+  saveAll();
+}
+
+// ============================================================
+// 初期化
+// ============================================================
+loadAll();
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('input', update);
+  el.addEventListener('change', update);
+});
+update();
+
+window.switchTab = switchTab;
+window.addExpRow = addExpRow;
+window.addEventRow = addEventRow;
+window.resetAll = resetAll;
+window.update = update;
+</script>
+</body>
+</html>
