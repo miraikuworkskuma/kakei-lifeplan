@@ -124,6 +124,7 @@
     <div class="card">
       <h2>🏠 固定費(毎月ほぼ同じ額が出ていくもの)</h2>
       <p class="lead" style="margin:0 0 10px">リベ大では固定費の見直しが「貯める力」の最重要ポイントです。各項目を<b>消費・浪費・投資</b>に仕分けしましょう(消費=生活に必要、浪費=なくても困らない・見栄、投資=将来のリターンにつながる)。</p>
+      <p class="lead" style="margin:0 0 10px">保険は生命保険・貯蓄型保険・自動車保険・車両保険を分けて入力できます。年払いは12で割って月額にしてください。</p>
       <div class="exp-head"><span>項目</span><span>金額(円/月)</span><span>仕分け</span><span></span></div>
       <div id="fixedRows"></div>
       <button class="btn-add" onclick="addExpRow('fixed')">+ 固定費を追加</button>
@@ -263,13 +264,16 @@
 // ============================================================
 const STORAGE_KEY = 'kakei-lifeplan-v1';
 
-// 固定費の初期項目(リベ大の六大固定費: 通信費・光熱費・保険・家・車・税金 を意識した並び)
+// 固定費の初期項目(保険を種類別に入力できるように分けています)
 const DEFAULT_FIXED = [
   { name: '住居費(家賃・住宅ローン)', amount: 70000, cls: 'shohi' },
   { name: '水道光熱費', amount: 12000, cls: 'shohi' },
   { name: '通信費(スマホ・ネット)', amount: 8000, cls: 'shohi' },
-  { name: '保険', amount: 5000, cls: 'shohi' },
-  { name: '車(ローン・駐車場・保険・ガソリン)', amount: 0, cls: 'shohi' },
+  { name: '生命保険(掛け捨て)', amount: 5000, cls: 'shohi' },
+  { name: '貯蓄型保険', amount: 0, cls: 'shohi' },
+  { name: '自動車保険(対人・対物)', amount: 0, cls: 'shohi' },
+  { name: '車両保険(任意)', amount: 0, cls: 'shohi' },
+  { name: '車(ローン・駐車場・ガソリン)', amount: 0, cls: 'shohi' },
   { name: 'サブスク(動画・音楽など)', amount: 2000, cls: 'rohi' },
   { name: 'その他の固定費', amount: 0, cls: 'shohi' },
 ];
@@ -770,12 +774,30 @@ function saveAll() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch (e) { /* プライベートモード等では保存しない */ }
 }
 
+function normalizeFixedRows(rows) {
+  const normalized = rows.map(r => {
+    if (r.name === '保険') return { ...r, name: '生命保険(掛け捨て)' };
+    if (r.name === '車(ローン・駐車場・保険・ガソリン)') return { ...r, name: '車(ローン・駐車場・ガソリン)' };
+    return r;
+  });
+  const required = [
+    { name: '貯蓄型保険', amount: 0, cls: 'shohi' },
+    { name: '自動車保険(対人・対物)', amount: 0, cls: 'shohi' },
+    { name: '車両保険(任意)', amount: 0, cls: 'shohi' },
+  ];
+  for (const item of required) {
+    if (!normalized.some(r => r.name === item.name)) normalized.push(item);
+  }
+  return normalized;
+}
+
 function loadAll() {
   let data = null;
   try { data = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) { data = null; }
 
   // 支出行(保存があれば復元、なければ初期項目)
-  (data && Array.isArray(data.fixed) && data.fixed.length ? data.fixed : DEFAULT_FIXED).forEach(r => addExpRow('fixed', r));
+  const savedFixed = data && Array.isArray(data.fixed) && data.fixed.length ? data.fixed : DEFAULT_FIXED;
+  normalizeFixedRows(savedFixed).forEach(r => addExpRow('fixed', r));
   (data && Array.isArray(data.vari) && data.vari.length ? data.vari : DEFAULT_VAR).forEach(r => addExpRow('var', r));
   (data && Array.isArray(data.events) ? data.events : []).forEach(e => addEventRow(e));
 
